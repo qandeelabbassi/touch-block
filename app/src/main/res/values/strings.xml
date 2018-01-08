@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">MOM</string>
+    <string name="ongoing_notification_text">Click to enable touch lock</string>
+    <plurals name="ongoing_notification_text_minute">
+        <item quantity="zero">Click to enable touch lock</item>
+        <item quantity="one">Click to enable touch lock for %d minute</item>
+        <item quantity="other">Click to enable touch lock for %d minutes</item>
+    </plurals>
+    <plurals name="ongoing_notification_text_hour">
+        <item quantity="zero">Click to enable touch lock</item>
+        <item quantity="one">Click to enable touch lock for %d hour</item>
+        <item quantity="other">Click to enable touch lock for %d hours</item>
+    </plurals>
+    <string name="kids_mode">Kids Mode</string>
+    <string name="mom_mode">Mom Mode</string>
+    <string name="punishment_mode">Punishment Mode</string>
+    <string name="help">Help</string>
+    <string name="hint_enable_switch">Shows touch lock control in notificaiton bar</string>
+    <string name="accessibility_service_description">This app only uses Accessibility Services permission to lock HOME, RECENT APPS, BACK, MENU buttons. Turn on so it can lock these buttons.\n\nThis app doesn\'t collect any kind of personal data.</string>
+    <string name="permission_accessibility_setting_description">disable soft keys</string>
+    <string name="accessibility_name">MOM - Key Lock</string>
+    <string name="extra_lock_mode">MODE</string>
+    <string name="extra_timer_hour">TIMER_HOUR</string>
+    <string name="extra_timer_minute">TIMER_MINUTE</string>
+    <string name="extra_timer_unit">TIMER_UNIT</string>
+    <string name="extra_password">PASSWORD</string>
+    <string name="crash_toast_text">send crash report</string>
+    <string-array name="timer_units">
+        <item>hours</item>
+        <item>minutes</item>
+    </string-array>
+</resources>
