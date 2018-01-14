@@ -24,6 +24,7 @@
     <string name="extra_timer_minute">TIMER_MINUTE</string>
     <string name="extra_timer_unit">TIMER_UNIT</string>
     <string name="extra_password">PASSWORD</string>
+    <string name="extra_time_consumed">CONSUMED</string>
     <string name="crash_toast_text">send crash report</string>
     <string-array name="timer_units">
         <item>hours</item>

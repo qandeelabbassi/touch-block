@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
@@ -16,7 +17,7 @@ import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.mom.AlarmReceiver;
+import com.mom.receivers.AlarmReceiver;
 import com.mom.util.Constants;
 import com.mom.MainActivity;
 import com.mom.R;
@@ -51,6 +52,8 @@ public class TouchControlService extends Service {
     private PunishmentContainerView punishmentContainerView;
     private PendingIntent pendingIntent;
     private String password;
+    private SharedPreferences preferences;
+    private Calendar then;
 
     public TouchControlService() {
 
@@ -60,6 +63,7 @@ public class TouchControlService extends Service {
     public void onCreate() {
         super.onCreate();
         isLocked = false;
+        preferences = getSharedPreferences(Constants.PREFERENCE_FILE, MODE_PRIVATE);
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             permissionRequired = true;
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -109,10 +113,11 @@ public class TouchControlService extends Service {
             } else {
                 return START_NOT_STICKY;
             }
+            long timeInMilis = intent.getLongExtra(getString(R.string.extra_time_consumed), -1);
             if(lockMode.equals(getString(R.string.punishment_mode)))
-                scheduleUnlockEvent(this, timerunit, true);
+                scheduleUnlockEvent(this, timerunit, true, timeInMilis);
             else
-                scheduleUnlockEvent(this, timerunit, false);
+                scheduleUnlockEvent(this, timerunit, false, timeInMilis);
         }
         runAsForeground("MOM", "Screen Locked!");
         freez();
@@ -160,6 +165,7 @@ public class TouchControlService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.d("test", "service destroy");
         EventBus.getDefault().unregister(this);
         super.onDestroy();
     }
@@ -191,6 +197,7 @@ public class TouchControlService extends Service {
             }
         }
         isLocked = false;
+        preferences.edit().putBoolean(Constants.KEY_LOCKED, false).apply();
         MyAccessibilityService myAccessibilityService = MyAccessibilityService.getInstance();
         if (myAccessibilityService != null)
             myAccessibilityService.setShouldBlockSoftKeys(false);
@@ -209,6 +216,7 @@ public class TouchControlService extends Service {
             punishmentContainerView.addToWindow();
         lockIcon.addToWindow();
         isLocked = true;
+        preferences.edit().putBoolean(Constants.KEY_LOCKED, true).apply();
         //Toast.makeText(TouchControlService.this, "Touch Locked!", Toast.LENGTH_SHORT).show();
     }
 
@@ -232,15 +240,21 @@ public class TouchControlService extends Service {
         startForeground(notificationID, mNotification);
     }
 
-    public void scheduleUnlockEvent(Context mContext, Constants.TIMER_UNITS timerUnit, boolean isPunishment) {
+    public void scheduleUnlockEvent(Context mContext, Constants.TIMER_UNITS timerUnit, boolean isPunishment, long timeInMilis) {
         AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(mContext, AlarmReceiver.class);
         pendingIntent = PendingIntent.getBroadcast(mContext, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Calendar then = Calendar.getInstance();
-        if (timerUnit.equals(Constants.TIMER_UNITS.HOUR)) {
-            then.add(Calendar.HOUR_OF_DAY, hour);
-        } else if (timerUnit.equals(Constants.TIMER_UNITS.MINUTES)) {
-            then.add(Calendar.MINUTE, minute);
+        if(timeInMilis <= 0) {
+            then = Calendar.getInstance();
+            if (timerUnit.equals(Constants.TIMER_UNITS.HOUR)) {
+                then.add(Calendar.HOUR_OF_DAY, hour);
+            } else if (timerUnit.equals(Constants.TIMER_UNITS.MINUTES)) {
+                then.add(Calendar.MINUTE, minute);
+            }
+            preferences.edit().putLong(Constants.KEY_TIME_CONSUMED, then.getTimeInMillis()).apply();
+        } else {
+            then = Calendar.getInstance();
+            then.setTimeInMillis(timeInMilis);
         }
         if(isPunishment)
             punishmentContainerView.initParamsAndListeners(windowManager, then, password);

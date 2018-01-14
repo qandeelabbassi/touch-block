@@ -12,6 +12,8 @@ public class Constants {
     public static final String KEY_MODE = "keyMode";
     public static final String KEY_TIMER_UNIT = "timerUnit";
     public static final String KEY_TIME = "unlockTime";
+    public static final String KEY_LOCKED = "isLocked";
+    public static final String KEY_TIME_CONSUMED = "timeConsumed";
     public static enum TIMER_UNITS
     {
         HOUR, MINUTES;

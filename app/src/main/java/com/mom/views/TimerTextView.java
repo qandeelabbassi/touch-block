@@ -40,6 +40,13 @@ public class TimerTextView extends AppCompatTextView implements View.OnTouchList
             }
         }
     };
+    private Runnable timer_updater = new Runnable() {
+        @Override
+        public void run() {
+            setTimerText();
+        }
+    };
+    private Handler timerHandler = new Handler();
 
     public TimerTextView(Context context) {
         super(context);
@@ -124,7 +131,7 @@ public class TimerTextView extends AppCompatTextView implements View.OnTouchList
             case MotionEvent.ACTION_DOWN:
                 last_text_edit = System.currentTimeMillis();
                 timerViewParams.alpha = 1.0f;
-                setTimerText();
+                //setTimerText();
                 break;
             case MotionEvent.ACTION_UP:
                 handler.postDelayed(input_finish_checker, delay);
@@ -163,5 +170,6 @@ public class TimerTextView extends AppCompatTextView implements View.OnTouchList
         text = stHr+":"+stMin+":"+stSec;
 
         this.setText(text+"\nRemaining");
+        timerHandler.postDelayed(timer_updater, 1000);
     }
 }
