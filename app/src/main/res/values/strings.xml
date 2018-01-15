@@ -26,6 +26,10 @@
     <string name="extra_password">PASSWORD</string>
     <string name="extra_time_consumed">CONSUMED</string>
     <string name="crash_toast_text">send crash report</string>
+    <string name="admin_receiver_status">adminStatus</string>
+    <string name="admin_receiver_status_disable_warning">If you disable admin access, the app might not function properly.</string>
+    <string name="mom_device_admin">MOM - Mobile Obsession Manipulator</string>
+    <string name="mom_device_admin_description">Admin access is required to prevent uninstalling</string>
     <string-array name="timer_units">
         <item>hours</item>
         <item>minutes</item>

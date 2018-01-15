@@ -3,6 +3,8 @@ package com.mom;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -30,12 +33,15 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.mom.receivers.MomDeviceAdminReceiver;
 import com.mom.services.TouchControlService;
 import com.mom.util.Constants;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+    private static final int REQUEST_CODE_ENABLE_ADMIN = 2000;
     private int OVERLAY_PERM_REQUEST = 1000;
     private int NOTIFICATION_ID = 10;
     private Notification mNotification;
@@ -52,11 +58,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Spinner timerUnit;
     private int spinnerCheck = 0;
     private ImageView imgShowHidePass;
+    private DevicePolicyManager mDPM;
+    private ComponentName mDeviceAdmin;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mDPM = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+        mDeviceAdmin = new ComponentName(this, MomDeviceAdminReceiver.class);
 
         preferences = getSharedPreferences(Constants.PREFERENCE_FILE, MODE_PRIVATE);
         toolbar = findViewById(R.id.toolbar);
@@ -74,8 +86,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         boolean notifVisible = preferences.getBoolean(Constants.KEY_NOTIF_VISIBILITY, false);
         String md = preferences.getString(Constants.KEY_MODE, "none");
-        String password = preferences.getString(Constants.KEY_PASSWORD,"");
-        String timUnit = preferences.getString(Constants.KEY_TIMER_UNIT,"hours");
+        String password = preferences.getString(Constants.KEY_PASSWORD, "");
+        String timUnit = preferences.getString(Constants.KEY_TIMER_UNIT, "hours");
         String time = preferences.getString(Constants.KEY_TIME, "");
         if (md.equals(getString(R.string.kids_mode))) {
             mode.check(R.id.radio_kids);
@@ -87,9 +99,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.edt_pass_cont).setVisibility(View.VISIBLE);
             edtPassword.setText(password);
         }
-        if(md.equals(getString(R.string.punishment_mode)) || md.equals(getString(R.string.mom_mode))){
+        if (md.equals(getString(R.string.punishment_mode)) || md.equals(getString(R.string.mom_mode))) {
             findViewById(R.id.clock_settings).setVisibility(View.VISIBLE);
-            if(timUnit.equals("hours"))
+            if (timUnit.equals("hours"))
                 timerUnit.setSelection(0);
             else
                 timerUnit.setSelection(1);
@@ -98,6 +110,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (notifVisible)
             swtEnable.setChecked(true);
         setListeners();
+        if (!mDPM.isAdminActive(mDeviceAdmin)) {
+            new MaterialDialog.Builder(this)
+                    .title("Administrator Access")
+                    .content("This app requires administrator access to prevent uninstallation when touch lock is enabled.")
+                    .positiveText("OK")
+                    .negativeText("CANCEL")
+                    .onPositive(new MaterialDialog.SingleButtonCallback() {
+                        @Override
+                        public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                            checkDeviceAdminState();
+                        }
+                    })
+                    .show();
+        }
+    }
+
+    private void checkDeviceAdminState() {
+        boolean isActive = false;
+        if (mDPM != null) {
+            isActive = mDPM.isAdminActive(mDeviceAdmin);
+        }
+        if (!isActive) {
+            // Launch the activity to have the user enable our admin.
+            Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+            intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mDeviceAdmin);
+            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    getString(R.string.mom_device_admin_description));
+            startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN);
+        }
     }
 
     private void setListeners() {
@@ -112,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         break;
                     case MotionEvent.ACTION_UP:
                         edtPassword.setInputType(InputType.TYPE_CLASS_TEXT |
-                            InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                                InputType.TYPE_TEXT_VARIATION_PASSWORD);
                         edtPassword.setSelection(edtPassword.getText().length());
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -153,24 +194,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             @Override
             public void afterTextChanged(Editable editable) {
-                if(timer.getText().toString().equals(""))
+                if (timer.getText().toString().equals(""))
                     return;
                 if (Integer.valueOf(timer.getText().toString()) <= 0) {
                     timer.setText("");
                     Toast.makeText(MainActivity.this, "Time can't be 0.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                if(String.valueOf(timerUnit.getSelectedItem()).equals("hours")) {
+                if (String.valueOf(timerUnit.getSelectedItem()).equals("hours")) {
                     int time = getTimeLimit(Constants.TIMER_UNITS.HOUR);
                     if (Integer.valueOf(timer.getText().toString()) > time) {
                         timer.setText("");
-                        Toast.makeText(MainActivity.this, "Hours should be <= "+time, Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, "Hours should be <= " + time, Toast.LENGTH_LONG).show();
                     }
-                } else if(String.valueOf(timerUnit.getSelectedItem()).equals("minutes")) {
+                } else if (String.valueOf(timerUnit.getSelectedItem()).equals("minutes")) {
                     int time = getTimeLimit(Constants.TIMER_UNITS.MINUTES);
                     if (Integer.valueOf(timer.getText().toString()) > getTimeLimit(Constants.TIMER_UNITS.MINUTES)) {
                         timer.setText("");
-                        Toast.makeText(MainActivity.this, "Minutes should be <= "+time, Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, "Minutes should be <= " + time, Toast.LENGTH_LONG).show();
                     }
                 }
             }
@@ -183,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 timer.setText("");
             }
+
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {
 
@@ -197,7 +239,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 preferences.edit().putString(Constants.KEY_MODE, stMode).apply();
                 if (!stMode.equals(getString(R.string.kids_mode))) {
                     findViewById(R.id.clock_settings).setVisibility(View.VISIBLE);
-                    if(stMode.equals(getString(R.string.punishment_mode)))
+                    if (stMode.equals(getString(R.string.punishment_mode)))
                         findViewById(R.id.edt_pass_cont).setVisibility(View.VISIBLE);
                     else
                         findViewById(R.id.edt_pass_cont).setVisibility(View.GONE);
@@ -209,7 +251,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
         swtEnable.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(!isChecked) {
+                if (!isChecked) {
                     preferences.edit().putBoolean(Constants.KEY_NOTIF_VISIBILITY, false).apply();
                     cancelAllNotifications();
                     return;
@@ -265,6 +307,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else
                     swtEnable.setChecked(false);
             }
+        } else if (requestCode == REQUEST_CODE_ENABLE_ADMIN) {
+            if (resultCode != RESULT_OK)
+                Toast.makeText(MainActivity.this, "App might not function properly!", Toast.LENGTH_LONG).show();
+
         }
     }
 
@@ -280,10 +326,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         notificationIntent.putExtra(getString(R.string.extra_timer_minute), minute);
         notificationIntent.putExtra(getString(R.string.extra_password), edtPassword.getText().toString());
         PendingIntent pendingIntent = PendingIntent.getService(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        if(stMode.equals(getString(R.string.mom_mode)) || stMode.equals(getString(R.string.punishment_mode))){
-            if(String.valueOf(timerUnit.getSelectedItem()).equals("hours"))
+        if (stMode.equals(getString(R.string.mom_mode)) || stMode.equals(getString(R.string.punishment_mode))) {
+            if (String.valueOf(timerUnit.getSelectedItem()).equals("hours"))
                 content = getResources().getQuantityString(R.plurals.ongoing_notification_text_hour, hour, hour);
-            if(String.valueOf(timerUnit.getSelectedItem()).equals("minutes"))
+            if (String.valueOf(timerUnit.getSelectedItem()).equals("minutes"))
                 content = getResources().getQuantityString(R.plurals.ongoing_notification_text_minute, minute, minute);
 
         }
@@ -347,10 +393,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         preferences.edit().putString(Constants.KEY_TIME, String.valueOf(minutes)).apply();
     }
 
-    public int getTimeLimit(Constants.TIMER_UNITS timerUnit){
+    public int getTimeLimit(Constants.TIMER_UNITS timerUnit) {
         int selectedId = mode.getCheckedRadioButtonId();
         String stMode = ((RadioButton) findViewById(selectedId)).getText().toString();
-        if(timerUnit == Constants.TIMER_UNITS.HOUR) {
+        if (timerUnit == Constants.TIMER_UNITS.HOUR) {
             if (stMode.equals(getString(R.string.mom_mode)))
                 return 72;
             else
